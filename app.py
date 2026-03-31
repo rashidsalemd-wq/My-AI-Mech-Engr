@@ -34,7 +34,7 @@ system_instruction = """
 
 # إعداد النموذج
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-pro",
+    model_name="gemini-1.5-flash",
     system_instruction=system_instruction
 )
 

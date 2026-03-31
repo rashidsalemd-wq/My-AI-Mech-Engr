@@ -5,30 +5,29 @@ import os
 st.set_page_config(page_title="مساعد SEC المطور", layout="wide")
 st.title("👷‍♂️ مساعد المهندس راشد - خبير المعايير")
 
-# 1. إعداد المفتاح
-try:
-    api_key = st.secrets["GEMINI_API_KEY"]
-    genai.configure(api_key=api_key)
-except:
+# 1. إعداد المفتاح للنسخة المستقرة
+if "GEMINI_API_KEY" in st.secrets:
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+else:
     st.error("المفتاح غير موجود في Secrets")
     st.stop()
 
-# 2. قراءة ملفات المعايير (الـ 43 ملف)
-def load_sec_kb():
-    content = ""
-    exclude = ['app.py', 'requirements.txt', 'packages.txt', '.gitignore', 'README.md']
-    for f in os.listdir("."):
-        if os.path.isfile(f) and f not in exclude:
+# 2. قراءة ملفات المعايير الـ 43
+@st.cache_data
+def load_all_documents():
+    full_text = ""
+    excluded = ['app.py', 'requirements.txt', 'packages.txt', '.gitignore', 'README.md']
+    for file in os.listdir("."):
+        if os.path.isfile(file) and file not in excluded:
             try:
-                with open(f, 'r', encoding='utf-8', errors='ignore') as file:
-                    content += f"\n--- {f} ---\n{file.read()}\n"
+                with open(file, 'r', encoding='utf-8', errors='ignore') as f:
+                    full_text += f"\n--- مصدر: {file} ---\n{f.read()}\n"
             except: continue
-    return content
+    return full_text
 
-if "kb" not in st.session_state:
-    st.session_state.kb = load_sec_kb()
+context_data = load_all_documents()
 
-# 3. تعريف الموديل (بدون تعقيدات لإصلاح خطأ v1beta)
+# 3. استخدام الموديل المستقر (v1)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 if "messages" not in st.session_state:
@@ -45,12 +44,12 @@ if prompt := st.chat_input("اسألني عن مواصفات SEC..."):
 
     with st.chat_message("assistant"):
         try:
-            # إرسال السياق مع السؤال مباشرة
-            full_prompt = f"استخدم المعايير التالية للرد: {st.session_state.kb[:30000]}\n\nالسؤال: {prompt}"
-            response = model.generate_content(full_prompt)
+            # إرسال السياق (المعايير) مع السؤال في طلب واحد
+            # تم تحديد 30000 حرف لضمان عدم تجاوز حدود الذاكرة والسرعة
+            refined_prompt = f"بناءً على ملفات SEC التالية:\n{context_data[:30000]}\n\nأجب على سؤال المهندس: {prompt}"
             
+            response = model.generate_content(refined_prompt)
             st.markdown(response.text)
             st.session_state.messages.append({"role": "assistant", "content": response.text})
         except Exception as e:
-            # إذا استمر خطأ 404، سنعرف السبب هنا
-            st.error(f"خطأ في الاتصال: {e}")
+            st.error(f"خطأ تقني: {e}")

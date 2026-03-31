@@ -30,7 +30,7 @@ sec_context = load_sec_files()
 
 # 3. استخدام الموديل المتوفر في حسابك (Gemini 2.0 Flash)
 # ملاحظة: هذا الموديل يدعم الحسابات الاحترافية Tier 1
-model = genai.GenerativeModel('gemini-2.0-flash') 
+model = genai.GenerativeModel('gemini-3.0-flash-preview') 
 
 if "messages" not in st.session_state:
     st.session_state.messages = []

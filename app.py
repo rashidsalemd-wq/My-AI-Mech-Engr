@@ -1,36 +1,34 @@
 import streamlit as st
 import google.generativeai as genai
-from google.generativeai.types import RequestOptions
 import os
 
-st.set_page_config(page_title="مساعد SEC", layout="wide")
+st.set_page_config(page_title="مساعد SEC المطور", layout="wide")
 st.title("👷‍♂️ مساعد المهندس راشد - خبير المعايير")
 
-# الإعداد الإجباري للنسخة المستقرة
+# 1. إعداد المفتاح
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
-    # استخدام الإعدادات الافتراضية المستقرة
     genai.configure(api_key=api_key)
 except:
-    st.error("المفتاح غير موجود")
+    st.error("المفتاح غير موجود في Secrets")
     st.stop()
 
-# قراءة ملفات المعايير
+# 2. قراءة ملفات المعايير (الـ 43 ملف)
 def load_sec_kb():
-    text = ""
-    ignore = ['app.py', 'requirements.txt', 'packages.txt', '.gitignore', 'README.md']
-    for f_name in os.listdir("."):
-        if os.path.isfile(f_name) and f_name not in ignore:
+    content = ""
+    exclude = ['app.py', 'requirements.txt', 'packages.txt', '.gitignore', 'README.md']
+    for f in os.listdir("."):
+        if os.path.isfile(f) and f not in exclude:
             try:
-                with open(f_name, 'r', encoding='utf-8', errors='ignore') as f:
-                    text += f"\n--- {f_name} ---\n{f.read()}\n"
+                with open(f, 'r', encoding='utf-8', errors='ignore') as file:
+                    content += f"\n--- {f} ---\n{file.read()}\n"
             except: continue
-    return text
+    return content
 
 if "kb" not in st.session_state:
     st.session_state.kb = load_sec_kb()
 
-# تعريف الموديل مع تحديد الإصدار المستقر يدوياً في الطلب
+# 3. تعريف الموديل (بدون تعقيدات لإصلاح خطأ v1beta)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 if "messages" not in st.session_state:
@@ -47,16 +45,12 @@ if prompt := st.chat_input("اسألني عن مواصفات SEC..."):
 
     with st.chat_message("assistant"):
         try:
-            # هنا التعديل الجوهري: نرسل الطلب للنسخة المستقرة v1
-            full_content = f"المعايير:\n{st.session_state.kb[:30000]}\n\nالسؤال: {prompt}"
-            
-            # نحدد api_version='v1' في الخيارات لقتل خطأ v1beta
-            response = model.generate_content(
-                full_content,
-                request_options=RequestOptions(api_version='v1')
-            )
+            # إرسال السياق مع السؤال مباشرة
+            full_prompt = f"استخدم المعايير التالية للرد: {st.session_state.kb[:30000]}\n\nالسؤال: {prompt}"
+            response = model.generate_content(full_prompt)
             
             st.markdown(response.text)
             st.session_state.messages.append({"role": "assistant", "content": response.text})
         except Exception as e:
-            st.error(f"خطأ تقني: {e}")
+            # إذا استمر خطأ 404، سنعرف السبب هنا
+            st.error(f"خطأ في الاتصال: {e}")

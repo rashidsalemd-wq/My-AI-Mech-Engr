@@ -1,44 +1,36 @@
 import streamlit as st
 import google.generativeai as genai
 
-# 1. إعداد واجهة المستخدم (تظهر للمهندسين في الموقع)
-st.set_page_config(page_title="My AI Mech Engr", layout="centered", page_icon="👷‍♂️")
+# 1. إعدادات الصفحة والواجهة
+st.set_page_config(page_title="المساعد الهندسي - ميكانيكا", layout="wide")
+st.title("👷‍♂️ مساعد المهندس الميكانيكي الذكي")
+st.subheader("خبير معايير SEC وأنظمة HVAC وخدمات الموقع")
 
-# التنسيق الجمالي للواجهة
-st.title("👷‍♂️ My AI Mech Engr")
-# التنسيق الجمالي المحسن (حل مشكلة ترتيب النص)
-st.markdown("""
-<div style="direction: rtl; text-align: right;">
-    <h3>👷 My AI Mech Engr</h3>
-    <p><b>مساعد المهندس الشخصي:</b> خبير تقني متخصص في أنظمة التكييف (HVAC)، مكافحة الحريق (Firefighting)، كاميرات المراقبة (CCTV)، وشبكات الصرف الصحي (Plumbing) وفق معايير SEC.</p>
-</div>
-""", unsafe_allow_html=True)
-st.divider()
+# 2. جلب المفتاح بأمان من Secrets (الخزنة اللي عدلتها في ستريم ليت)
+try:
+    api_key = st.secrets["GEMINI_API_KEY"]
+    genai.configure(api_key=api_key)
+except KeyError:
+    st.error("خطأ: لم يتم العثور على المفتاح في Secrets. تأكد من إضافته في إعدادات Streamlit باسم GEMINI_API_KEY")
+    st.stop()
 
-# 2. إعداد الـ API Key الخاص بك (تم التحديث)
-API_KEY = "AIzaSyAHw--SskwlsoBGd5CDT8gA368esIwvcbQ"
-
-genai.configure(api_key=API_KEY)
-
-# 3. توجيهات النظام (الخلفية الهندسية للمساعد)
+# 3. إعداد التعليمات البرمجية (System Instructions)
 system_instruction = """
-أنت 'My AI Mech Engr'. شخصيتك: مهندس سعودي خبير، ذكي، فزعة، وودود.
-
+أنت خبير معايير نسمة الهندسية. شخصيتك: مهندس سعودي خبير، ذكي، فزعة، وودود. 
 قواعد العمل والبحث:
-1. ابحث أولاً في ملفات SEC المرفوعة في المستودع (تفكيك الكود: TESP108، الجزء 10، مراجعة 0).
-2. المراجع التكميلية: NFPA و HCIS (أحدث الإصدارات).
-3. السياق المهني: محطات تحويل كهرباء (GIS Substations)، متخصص في (HVAC, Fire Protection, CCTV, Plumbing).
-4. اللهجة: سعودية بيضاء ودودة مع استخدام مصطلحات إنجليزية تقنية باحترافية.
-5. ابدأ دائماً بترحيب: "أهلاً بك يا زميلي المهندس، معك My AI Mech Engr، كيف أقدر أفزع لك اليوم؟"
+1. ابحث أولاً في ملفات الـ SEC الـ 43 المرفوعة (إذا كانت متوفرة في السياق).
+2. الأولوية القصوى: الدقة الهندسية بناءً على معايير شركة السعودية للكهرباء.
+3. التحدث بلهجة سعودية بيضاء ودودة مع استخدام مصطلحات إنجليزية تقنية باحترافية.
+4. ابدأ دائماً بترحيب: "أهلاً بك يا زميلي المهندس، معك My AI Mech Engr، كيف أفرع لك اليوم؟"
 """
 
-# إعداد النموذج
+# 4. إعداد الموديل (اخترنا Pro لأنه الآن مدفوع ويعطيك أفضل دقة)
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
+    model_name="gemini-1.5-pro",
     system_instruction=system_instruction
 )
 
-# 4. إدارة الدردشة (حفظ الرسائل السابقة)
+# 5. إدارة الدردشة (حفظ الرسائل السابقة)
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -47,18 +39,21 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# استقبال سؤال المهندس
+# 6. استقبال أسئلة المستخدم
 if prompt := st.chat_input("اسأل عن المعايير، الأكواد، أو تفاصيل التركيب..."):
+    # إضافة سؤال المستخدم للدردشة
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # توليد الإجابة
+    # طلب الرد من الموديل
     with st.chat_message("assistant"):
         try:
-            # هنا المساعد سيستخدم ذكاء Gemini مع التعليمات المذكورة
-            response = model.generate_content(prompt)
-            st.markdown(response.text)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
-        except Exception as e:
-            st.error(f"حصل خطأ فني يا هندسة: {e}")
+            # هنا الموديل يحلل ويرد بناءً على تعليماتك
+            chat = model.start_chat(history=[])
+            response = chat.send_message(prompt)
+            full_response = response.text
+            st.markdown(full_response)
+            
+            # إضافة رد المساعد للذاكرة
+            st.session

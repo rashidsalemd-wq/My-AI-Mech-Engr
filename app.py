@@ -1,36 +1,36 @@
 import streamlit as st
 import google.generativeai as genai
+from google.generativeai.types import RequestOptions
 import os
 
-# إعداد الصفحة
-st.set_page_config(page_title="مساعد SEC المطور", layout="wide")
+st.set_page_config(page_title="مساعد SEC", layout="wide")
 st.title("👷‍♂️ مساعد المهندس راشد - خبير المعايير")
 
-# جلب المفتاح
+# الإعداد الإجباري للنسخة المستقرة
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
-    # ملاحظة: السطر القادم هو الحل لخطأ 404
-    genai.configure(api_key=api_key, transport='rest') 
-except Exception as e:
-    st.error(f"خطأ في المفتاح: {e}")
+    # استخدام الإعدادات الافتراضية المستقرة
+    genai.configure(api_key=api_key)
+except:
+    st.error("المفتاح غير موجود")
     st.stop()
 
-# وظيفة قراءة الملفات
-def load_sec_data():
-    all_content = ""
+# قراءة ملفات المعايير
+def load_sec_kb():
+    text = ""
     ignore = ['app.py', 'requirements.txt', 'packages.txt', '.gitignore', 'README.md']
-    files = [f for f in os.listdir(".") if os.path.isfile(f) and f not in ignore]
-    for file in files:
-        try:
-            with open(file, 'r', encoding='utf-8', errors='ignore') as f:
-                all_content += f"\n--- {file} ---\n{f.read()}\n"
-        except: continue
-    return all_content
+    for f_name in os.listdir("."):
+        if os.path.isfile(f_name) and f_name not in ignore:
+            try:
+                with open(f_name, 'r', encoding='utf-8', errors='ignore') as f:
+                    text += f"\n--- {f_name} ---\n{f.read()}\n"
+            except: continue
+    return text
 
-if "sec_kb" not in st.session_state:
-    st.session_state.sec_kb = load_sec_data()
+if "kb" not in st.session_state:
+    st.session_state.kb = load_sec_kb()
 
-# اختيار الموديل بنسخته المستقرة
+# تعريف الموديل مع تحديد الإصدار المستقر يدوياً في الطلب
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 if "messages" not in st.session_state:
@@ -40,20 +40,23 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-if prompt := st.chat_input("اسألني عن أي تفصيلة في معايير SEC..."):
+if prompt := st.chat_input("اسألني عن مواصفات SEC..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
         try:
-            # دمج المعايير مع السؤال
-            context = st.session_state.sec_kb[:30000]
-            full_prompt = f"استخدم المعايير التالية للرد: {context}\n\nسؤال المهندس راشد: {prompt}"
+            # هنا التعديل الجوهري: نرسل الطلب للنسخة المستقرة v1
+            full_content = f"المعايير:\n{st.session_state.kb[:30000]}\n\nالسؤال: {prompt}"
             
-            # الطلب باستخدام النسخة المستقرة
-            response = model.generate_content(full_prompt)
+            # نحدد api_version='v1' في الخيارات لقتل خطأ v1beta
+            response = model.generate_content(
+                full_content,
+                request_options=RequestOptions(api_version='v1')
+            )
+            
             st.markdown(response.text)
             st.session_state.messages.append({"role": "assistant", "content": response.text})
         except Exception as e:
-            st.error(f"حدث خطأ: {e}")
+            st.error(f"خطأ تقني: {e}")

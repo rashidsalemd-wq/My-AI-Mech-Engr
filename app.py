@@ -1,59 +1,44 @@
 import streamlit as st
 import google.generativeai as genai
 
-# 1. إعدادات الصفحة والواجهة
-st.set_page_config(page_title="المساعد الهندسي - ميكانيكا", layout="wide")
+# 1. إعدادات الصفحة
+st.set_page_config(page_title="المساعد الهندسي", layout="wide")
 st.title("👷‍♂️ مساعد المهندس الميكانيكي الذكي")
-st.subheader("خبير معايير SEC وأنظمة HVAC وخدمات الموقع")
 
-# 2. جلب المفتاح بأمان من Secrets (الخزنة اللي عدلتها في ستريم ليت)
+# 2. جلب المفتاح بأمان
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
-except KeyError:
-    st.error("خطأ: لم يتم العثور على المفتاح في Secrets. تأكد من إضافته في إعدادات Streamlit باسم GEMINI_API_KEY")
+except Exception as e:
+    st.error("تأكد من وضع المفتاح في Secrets في Streamlit")
     st.stop()
 
-# 3. إعداد التعليمات البرمجية (System Instructions)
-system_instruction = """
-أنت خبير معايير نسمة الهندسية. شخصيتك: مهندس سعودي خبير، ذكي، فزعة، وودود. 
-قواعد العمل والبحث:
-1. ابحث أولاً في ملفات الـ SEC الـ 43 المرفوعة (إذا كانت متوفرة في السياق).
-2. الأولوية القصوى: الدقة الهندسية بناءً على معايير شركة السعودية للكهرباء.
-3. التحدث بلهجة سعودية بيضاء ودودة مع استخدام مصطلحات إنجليزية تقنية باحترافية.
-4. ابدأ دائماً بترحيب: "أهلاً بك يا زميلي المهندس، معك My AI Mech Engr، كيف أفرع لك اليوم؟"
-"""
-
-# 4. إعداد الموديل (اخترنا Pro لأنه الآن مدفوع ويعطيك أفضل دقة)
+# 3. إعداد الموديل
+system_instruction = "أنت مهندس ميكانيكي خبير بمواصفات شركة الكهرباء (SEC)."
 model = genai.GenerativeModel(
     model_name="gemini-1.5-pro",
     system_instruction=system_instruction
 )
 
-# 5. إدارة الدردشة (حفظ الرسائل السابقة)
+# 4. إدارة الدردشة
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# عرض الرسائل السابقة
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# 6. استقبال أسئلة المستخدم
-if prompt := st.chat_input("اسأل عن المعايير، الأكواد، أو تفاصيل التركيب..."):
-    # إضافة سؤال المستخدم للدردشة
+# 5. استقبال الأسئلة
+if prompt := st.chat_input("اسألني أي شيء هندسي..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # طلب الرد من الموديل
     with st.chat_message("assistant"):
         try:
-            # هنا الموديل يحلل ويرد بناءً على تعليماتك
             chat = model.start_chat(history=[])
             response = chat.send_message(prompt)
-            full_response = response.text
-            st.markdown(full_response)
-            
-            # إضافة رد المساعد للذاكرة
-            st.session
+            st.markdown(response.text)
+            st.session_state.messages.append({"role": "assistant", "content": response.text})
+        except Exception as e:
+            st.error(f"حدث خطأ: {e}")

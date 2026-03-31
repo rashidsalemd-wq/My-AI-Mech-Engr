@@ -10,7 +10,7 @@ st.title("👷‍♂️ My AI Mech Engr")
 st.markdown("""
 <div style="direction: rtl; text-align: right;">
     <h3>👷 My AI Mech Engr</h3>
-    <p><b>مساعد المهندس الشخصي:</b> خبير تقني متخصص في أنظمة التكييف (HVAC)، مكافحة الحريق (Firefighting)، كاميرات المراقبة (CCTV)، وشبكات الصرف الصحي (Plumbing) وفق معايير SEC و NFPA.</p>
+    <p><b>مساعد المهندس الشخصي:</b> خبير تقني متخصص في أنظمة التكييف (HVAC)، مكافحة الحريق (Firefighting)، كاميرات المراقبة (CCTV)، وشبكات الصرف الصحي (Plumbing) وفق معايير SEC.</p>
 </div>
 """, unsafe_allow_html=True)
 st.divider()

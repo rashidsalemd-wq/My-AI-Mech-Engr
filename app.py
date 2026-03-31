@@ -2,69 +2,53 @@ import streamlit as st
 import google.generativeai as genai
 import os
 
+# إعداد الصفحة
 st.set_page_config(page_title="مساعد SEC المطور", layout="wide")
-st.title("👷‍♂️ مساعد المهندس راشد")
+st.title("👷‍♂️ مساعد المهندس راشد - خبير المعايير")
 
-# 1. الإعداد الأساسي (الذي نجح معك سابقاً)
+# الربط مع الحساب
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
-    # نستخدم الموديل الأكثر استقراراً ومجرباً من قبلك
-    model = genai.GenerativeModel('gemini-1.5-flash') 
-except Exception as e:
-    st.error(f"خطأ في إعداد المفتاح: {e}")
+    model = genai.GenerativeModel('gemini-1.5-flash')
+except:
+    st.error("تأكد من وجود API Key في Secrets")
     st.stop()
 
-# 2. وظيفة قراءة الملفات "ببساطة" (السر هنا)
-def get_sec_knowledge():
-    combined_text = ""
-    # تجاهل ملفات الكود والنظام
-    ignored = ['app.py', 'requirements.txt', 'packages.txt', '.gitignore', 'README.md']
-    # جلب كل ملفات المعايير من المجلد الرئيسي
-    for filename in os.listdir("."):
-        if os.path.isfile(filename) and filename not in ignored:
+# قراءة الملفات المرفوعة في GitHub
+def get_knowledge_base():
+    text = ""
+    ignore = ['app.py', 'requirements.txt', 'packages.txt', '.gitignore', 'README.md']
+    for file in os.listdir("."):
+        if os.path.isfile(file) and file not in ignore:
             try:
-                with open(filename, 'r', encoding='utf-8', errors='ignore') as f:
-                    combined_text += f"\n--- محتوى ملف: {filename} ---\n"
-                    combined_text += f.read() + "\n"
-            except:
-                continue
-    return combined_text
+                with open(file, 'r', encoding='utf-8', errors='ignore') as f:
+                    text += f"\n--- مصدر: {file} ---\n{f.read()}\n"
+            except: continue
+    return text
 
-# تحميل البيانات في ذاكرة الجلسة لمرة واحدة فقط
-if "sec_kb" not in st.session_state:
-    with st.spinner("جاري قراءة ملفات المعايير..."):
-        st.session_state.sec_kb = get_sec_knowledge()
+if "kb" not in st.session_state:
+    st.session_state.kb = get_knowledge_base()
 
-# 3. واجهة الدردشة
+# الدردشة
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-if prompt := st.chat_input("اسألني عن معايير SEC..."):
+if prompt := st.chat_input("اسألني عن مواصفات SEC..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
         try:
-            # هنا نقوم بدمج محتوى ملفاتك مع سؤالك في طلب واحد
-            # أخذنا أول 30 ألف حرف لضمان السرعة وعدم تجاوز الحدود
-            context = st.session_state.sec_kb[:30000]
-            
-            full_prompt = f"""
-            أنت خبير هندسي. استخدم المعايير التالية المأخوذة من ملفاتك للإجابة بدقة:
-            
-            {context}
-            
-            سؤال المهندس راشد: {prompt}
-            """
-            
-            response = model.generate_content(full_prompt)
+            # نرسل السؤال مع جزء من المعايير (أول 30 ألف حرف لضمان السرعة)
+            context = st.session_state.kb[:30000]
+            response = model.generate_content(f"المعايير:\n{context}\n\nالسؤال: {prompt}")
             st.markdown(response.text)
             st.session_state.messages.append({"role": "assistant", "content": response.text})
         except Exception as e:
-            st.error(f"حدث خطأ في الاتصال: {e}")
+            st.error(f"خطأ: {e}")

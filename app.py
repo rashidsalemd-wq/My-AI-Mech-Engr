@@ -16,7 +16,7 @@ except Exception as e:
 # 3. إعداد الموديل
 system_instruction = "أنت مهندس ميكانيكي خبير بمواصفات شركة الكهرباء (SEC)."
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-pro",
+    model_name="gemini-1.5-flash",
     system_instruction=system_instruction
 )
 
